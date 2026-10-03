@@ -82,8 +82,14 @@ CONTAINER_NAME="${CONTAINER_NAME:-glm53-flash-tf}"           # the same name on 
 SERVED_NAME="${SERVED_NAME:-GLM-5.3-Flash-EXL3}"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8888}"
-DRAFTER="${DRAFTER:-dflash2}"        # dflash2: incoai/GLM-5.3-Flash-DFlash2 drafts (CC BY-NC-ND 4.0: non-commercial
-                                     # use only), +5-10% decode over mtp; mtp: the checkpoint's own MTP head
+# fondi dgx kit (muojp mirror): DFlash2 is CC BY-NC-ND 4.0 (non-commercial use only) and its licence does not permit
+# our use — NEVER enable it. The default is the checkpoint's own MTP head, and DRAFTER=dflash2 is refused here, before
+# prepare.sh could download incoai/GLM-5.3-Flash-DFlash2 or start.sh could pass it to TensorFold. (Operator, 2026-10-03.)
+DRAFTER="${DRAFTER:-mtp}"
+if [[ "$DRAFTER" != mtp ]]; then
+  echo "refusing DRAFTER=$DRAFTER: DFlash2 is CC BY-NC-ND 4.0 and not licensed for this kit; use DRAFTER=mtp" >&2
+  exit 1
+fi
 # The checkpoint's MTP head beside DFlash2 (TensorFold's TF_GLM_MTP): auto (default) leaves it out while DFlash2
 # drafts every request; TensorFold v0.6.0's own default, 1, would load it (1.77 GiB a Spark) with PARALLEL=1.
 export TF_GLM_MTP="${TF_GLM_MTP:-auto}"
@@ -149,7 +155,8 @@ export TF_GLM_COPY_MAX="$COPY_MAX"
 # under the request's own keyed sampling noise drops below 0.3 (up to 7 drafts); prose 47.2 -> 50.6 tok/s, code 51.7 ->
 # 55.5 over fc5:0.3 (two boots each). Drafts only propose: replies are the same under every policy.
 DRAFT_POLICY="${DRAFT_POLICY:-fnc7:0.3}"
-export TF_GLM_DFLASH_POLICY="$DRAFT_POLICY"
+# Not exported on this kit: the policy only steers DFlash2, which is refused above, and an inert TF_GLM_DFLASH_POLICY
+# in the ranks' environment read like DFlash2 was in use.
 # Prompt chunks' hyper-connection glue split by rows between the two Sparks, its exchanges overlapped with the next
 # rows' work (patch 0010): prefill ~1,270 -> ~1,730 tok/s on a 50k prompt (with patches 0009 and 0020); decode rounds
 # pay ~1.5%. The overlap also runs the next block's front on its own rows during the exchanges (patch 0033; with
